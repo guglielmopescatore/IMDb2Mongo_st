@@ -387,6 +387,68 @@ def app(df, values):
         print(f"An error occurred: {e}")
         raise SystemExit(f"Cancelling: {e}")
 
+def aggregation(field, connection_string, database_name, collection_name, NewCollection):
+    #Inserire qui la stringa di connessione a MongoDB con il proprio nome utente e password
+    client = pymongo.MongoClient(connection_string)
+    #Indicare qui il nome del database e della collection generati da IMDb2Mongo
+    result = client[database_name][collection_name].aggregate([
+    {
+        '$match': {
+            f'{field}': {
+                '$exists': True,
+                '$ne': []
+            }
+        }
+    }, {
+        '$project': {
+            '_id': 0,
+            f'{field}': 1,
+            'year': 1
+        }
+    }, {
+        '$unwind': {
+            'path': f'${field}'
+        }
+    }, {
+        '$addFields':{
+        f"{field}.code": f'${field}._id',
+        f"{field}.role": f'{field}',
+        f"{field}.year": '$year'
+    }
+    }, {
+        '$replaceRoot': {
+            'newRoot': f'${field}'
+        }
+    },{
+        '$project': {
+            '_id': 0
+        }
+    },{
+        '$merge': {
+# Inserire qui il nome della Crew Collection che verrà salvata su MongoDB
+            'into':NewCollection
+        }
+    }
+])
+
+
+# In[3]:
+
+
+def Crew_Generator(CrewCollection, connection_string, database_name, collection_name):
+    NewCollection = CrewCollection
+    # I fields vanno controllati e eventualmente aggiunti i nuovi
+    fields = ['art department', 'art direction', 'assistant director', 'camera and electrical department', 'cast', 'casting department', 'casting director', 'cinematographer', 'composer', 'costume department', 'costume designer', 'creator', 'director', 'editor', 'editorial department', 'location management', 'make up', 'miscellaneous crew', 'music department', 'producer', 'production design', 'production manager', 'script department', 'set decoration', 'sound crew', 'special effects', 'stunt performer', 'visual effects', 'writer']
+    for field in fields:
+        aggregation(field, connection_string, database_name, collection_name, NewCollection)
+
+def Cast_Generator(CastCollection, connection_string, database_name, collection_name):
+    NewCollection = CastCollection
+    # I fields vanno controllati e eventualmente aggiunti i nuovi
+    fields = ['cast']
+    for field in fields:
+        aggregation(field, connection_string, database_name, collection_name, NewCollection)
+
 def main():
     """
     Main function to process and upload movie data.
@@ -419,6 +481,13 @@ def main():
     connection_string = st.text_input("Connection string:")
     database_name = st.text_input("Database name:")
     collection_name = st.text_input("Collection name:")
+    # Checkbox for Crew and Cast Generators
+    generate_crew = st.checkbox("Generate Crew Data")
+    generate_cast = st.checkbox("Generate Cast Data")
+
+    # Form the collection names
+    CrewCollection = 'Crew' + collection_name if generate_crew else None
+    CastCollection = 'Cast' + collection_name if generate_cast else None
     
     if st.button("Process Data"):
         if filename and connection_string and database_name and collection_name:
@@ -431,7 +500,11 @@ def main():
                 df = dask_impl(titles, infoset)
                 df.dropna(inplace=True)
                 app(df, values)
-
+                # Call Crew_Generator and Cast_Generator if the checkboxes are checked
+                if generate_crew:
+                    Crew_Generator(CrewCollection, connection_string, database_name, collection_name)
+                if generate_cast:
+                    Cast_Generator(CastCollection, connection_string, database_name, collection_name)
                 st.success("Operation completed successfully")
             except Exception as e:
                 st.error(f"An error occurred: {e}")
