@@ -482,8 +482,8 @@ def main():
     database_name = st.text_input("Database name:")
     collection_name = st.text_input("Collection name:")
     # Checkbox for Crew and Cast Generators
-    generate_crew = st.checkbox("Generate Crew Data")
-    generate_cast = st.checkbox("Generate Cast Data")
+    generate_crew = st.checkbox("Generate Crew Collection")
+    generate_cast = st.checkbox("Generate Cast Collection")
 
     # Form the collection names
     CrewCollection = 'Crew' + collection_name if generate_crew else None
