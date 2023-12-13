@@ -2,6 +2,5 @@ pandas
 dnspython
 dask[dataframe]
 pymongo
-warnings
 IMDbPY
 datetime
