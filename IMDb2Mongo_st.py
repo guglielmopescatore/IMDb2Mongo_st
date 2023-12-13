@@ -96,10 +96,10 @@ def get_database():
     # Return the collected values
     return connection_string, database_name, collection_name
 
-
 def get_data(filename):
     """
-    Reads the list of titles from the file and deletes the first two letters of the code.
+    Reads the list of titles from the file, deletes the first row if it's not a typical IMDb code, 
+    and deletes the first two letters of the code.
 
     Args:
         filename (str): The path to the CSV file to be read.
@@ -111,17 +111,24 @@ def get_data(filename):
         SystemExit: If the dataset is incorrect or the file cannot be read.
     """
     try:
-        # Read the specified column from the CSV file
-        titles = pd.read_csv(filename, usecols=[0], names=['_id'])
+        # Read the CSV file without assuming first row is header
+        titles = pd.read_csv(filename, header=None, names=['_id'])
+
+        # Check if the first row is a typical IMDb code
+        if not titles.iloc[0, 0].startswith('tt'):
+            # If not, drop the first row
+            titles = titles.drop(titles.index[0])
 
         # Delete the first two letters of the code in the '_id' column
         titles['_id'] = titles['_id'].str.slice_replace(start=0, stop=2, repl='')
+
     except Exception as e:
         # Print error message and exit
         print(f"The dataset is incorrect or cannot be read. Error: {e}")
         raise SystemExit("Cancelling: The dataset is incorrect or cannot be read")
 
     return titles
+
 
 
 def identify(DataObj):
